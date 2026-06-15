@@ -88,15 +88,6 @@ export default function StudentPage({ params }: PageProps) {
             onChange={(next) => setStudentSeries(studentId, next)}
           />
 
-          <DistributionTable
-            materials={seriesMaterials}
-            getDistributedAt={(materialId) =>
-              getDistribution(studentId, materialId)?.distributedAt ?? null
-            }
-            onMarkDistributed={(materialId) => markDistributed(studentId, materialId)}
-            onClearDistribution={(materialId) => clearDistribution(studentId, materialId)}
-          />
-
           <WorkbookSelector
             materials={materials}
             grade={student.grade}
@@ -120,6 +111,15 @@ export default function StudentPage({ params }: PageProps) {
             onUpdatePayment={(materialId, updates) =>
               updatePayment(studentId, materialId, updates)
             }
+          />
+
+          <DistributionTable
+            materials={seriesMaterials}
+            getDistributedAt={(materialId) =>
+              getDistribution(studentId, materialId)?.distributedAt ?? null
+            }
+            onMarkDistributed={(materialId) => markDistributed(studentId, materialId)}
+            onClearDistribution={(materialId) => clearDistribution(studentId, materialId)}
           />
         </div>
       </PageContainer>
