@@ -25,12 +25,20 @@ export default function HomePage() {
       <Header
         title="教材配布管理"
         action={
-          <Link
-            href="/admin"
-            className="shrink-0 rounded-lg px-2 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
-          >
-            設定
-          </Link>
+          <div className="flex shrink-0 items-center gap-1">
+            <Link
+              href="/orders"
+              className="rounded-lg px-2 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+            >
+              発注
+            </Link>
+            <Link
+              href="/admin"
+              className="rounded-lg px-2 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+            >
+              設定
+            </Link>
+          </div>
         }
       />
       <PageContainer>

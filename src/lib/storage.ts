@@ -5,6 +5,7 @@ import type {
   AppData,
   Distribution,
   Material,
+  OrderMemo,
   Payment,
   Student,
 } from "./types";
@@ -48,6 +49,7 @@ export function loadAppData(): AppData {
     materials,
     distributions: readJson<Distribution[]>(STORAGE_KEYS.distributions, []),
     payments: readJson<Payment[]>(STORAGE_KEYS.payments, []),
+    orderMemos: readJson<OrderMemo[]>(STORAGE_KEYS.orderMemos, []),
   };
 }
 
@@ -62,6 +64,7 @@ export function saveAppData(data: AppData): void {
   writeJson(STORAGE_KEYS.materials, data.materials);
   writeJson(STORAGE_KEYS.distributions, data.distributions);
   writeJson(STORAGE_KEYS.payments, data.payments);
+  writeJson(STORAGE_KEYS.orderMemos, data.orderMemos);
 }
 
 export function formatDate(isoDate: string | null): string {

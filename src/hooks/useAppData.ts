@@ -6,6 +6,7 @@ import type {
   AppData,
   Distribution,
   Material,
+  OrderMemo,
   Payment,
   Student,
 } from "@/lib/types";
@@ -229,6 +230,46 @@ export function useAppData() {
     });
   }, [data, persist]);
 
+  const addOrderMemo = useCallback(
+    (grade: string, materialName: string, memo: string) => {
+      if (!data) return;
+      const item: OrderMemo = {
+        id: createId(),
+        grade,
+        materialName: materialName.trim(),
+        memo: memo.trim(),
+      };
+      persist({ ...data, orderMemos: [...data.orderMemos, item] });
+    },
+    [data, persist],
+  );
+
+  const updateOrderMemo = useCallback(
+    (id: string, grade: string, materialName: string, memo: string) => {
+      if (!data) return;
+      persist({
+        ...data,
+        orderMemos: data.orderMemos.map((m) =>
+          m.id === id
+            ? { ...m, grade, materialName: materialName.trim(), memo: memo.trim() }
+            : m,
+        ),
+      });
+    },
+    [data, persist],
+  );
+
+  const deleteOrderMemo = useCallback(
+    (id: string) => {
+      if (!data) return;
+      persist({
+        ...data,
+        orderMemos: data.orderMemos.filter((m) => m.id !== id),
+      });
+    },
+    [data, persist],
+  );
+
   return {
     data,
     ready: data !== null,
@@ -245,5 +286,8 @@ export function useAppData() {
     updatePayment,
     exportJson,
     importRoster,
+    addOrderMemo,
+    updateOrderMemo,
+    deleteOrderMemo,
   };
 }
