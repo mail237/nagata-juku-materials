@@ -1,65 +1,71 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { GradeFilter } from "@/components/home/GradeFilter";
+import { StudentCard } from "@/components/home/StudentCard";
+import { Header } from "@/components/layout/Header";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { GRADES } from "@/lib/constants";
+import { useAppData } from "@/hooks/useAppData";
+
+export default function HomePage() {
+  const { data, ready } = useAppData();
+  const [selectedGrade, setSelectedGrade] = useState<string>(GRADES[0]);
+
+  const students = useMemo(() => {
+    if (!data) return [];
+    return data.students
+      .filter((s) => s.grade === selectedGrade)
+      .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  }, [data, selectedGrade]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <>
+      <Header
+        title="教材配布管理"
+        action={
+          <Link
+            href="/admin"
+            className="shrink-0 rounded-lg px-2 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            設定
+          </Link>
+        }
+      />
+      <PageContainer>
+        {!ready ? (
+          <p className="py-8 text-center text-sm text-slate-500">読み込み中…</p>
+        ) : (
+          <div className="space-y-5">
+            <section>
+              <p className="mb-3 text-sm font-medium text-slate-700">学年を選択</p>
+              <GradeFilter selected={selectedGrade} onChange={setSelectedGrade} />
+            </section>
+
+            <section className="space-y-3">
+              <p className="text-sm font-medium text-slate-700">
+                {selectedGrade}（{students.length}名）
+              </p>
+              {students.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center">
+                  <p className="text-sm text-slate-500">この学年の生徒がいません</p>
+                  <Link
+                    href="/admin"
+                    className="mt-3 inline-block text-sm font-medium text-blue-600"
+                  >
+                    管理画面で生徒を追加 →
+                  </Link>
+                </div>
+              ) : (
+                students.map((student) => (
+                  <StudentCard key={student.id} student={student} />
+                ))
+              )}
+            </section>
+          </div>
+        )}
+      </PageContainer>
+    </>
   );
 }
