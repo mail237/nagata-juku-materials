@@ -47,6 +47,9 @@ type AppDataContextValue = {
   addOrderMemo: (grade: string, materialName: string, memo: string) => void;
   updateOrderMemo: (id: string, grade: string, materialName: string, memo: string) => void;
   deleteOrderMemo: (id: string) => void;
+  getAssignedMaterialIds: (studentId: string) => string[];
+  assignWorkbook: (studentId: string, materialId: string) => void;
+  unassignWorkbook: (studentId: string, materialId: string) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -101,6 +104,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         students: data.students.filter((s) => s.id !== id),
         distributions: data.distributions.filter((d) => d.studentId !== id),
         payments: data.payments.filter((p) => p.studentId !== id),
+        workbookAssignments: data.workbookAssignments.filter((a) => a.studentId !== id),
       });
     },
     [data, persist],
@@ -140,6 +144,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         materials: data.materials.filter((m) => m.id !== id),
         distributions: data.distributions.filter((d) => d.materialId !== id),
         payments: data.payments.filter((p) => p.materialId !== id),
+        workbookAssignments: data.workbookAssignments.filter((a) => a.materialId !== id),
       });
     },
     [data, persist],
@@ -267,6 +272,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       students,
       distributions: data.distributions.filter((d) => studentIds.has(d.studentId)),
       payments: data.payments.filter((p) => studentIds.has(p.studentId)),
+      workbookAssignments: data.workbookAssignments.filter((a) =>
+        studentIds.has(a.studentId),
+      ),
     });
   }, [data, persist]);
 
@@ -310,6 +318,44 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     [data, persist],
   );
 
+  const getAssignedMaterialIds = useCallback(
+    (studentId: string): string[] => {
+      if (!data) return [];
+      return data.workbookAssignments
+        .filter((a) => a.studentId === studentId)
+        .map((a) => a.materialId);
+    },
+    [data],
+  );
+
+  const assignWorkbook = useCallback(
+    (studentId: string, materialId: string) => {
+      if (!data) return;
+      const exists = data.workbookAssignments.some(
+        (a) => a.studentId === studentId && a.materialId === materialId,
+      );
+      if (exists) return;
+      persist({
+        ...data,
+        workbookAssignments: [...data.workbookAssignments, { studentId, materialId }],
+      });
+    },
+    [data, persist],
+  );
+
+  const unassignWorkbook = useCallback(
+    (studentId: string, materialId: string) => {
+      if (!data) return;
+      persist({
+        ...data,
+        workbookAssignments: data.workbookAssignments.filter(
+          (a) => !(a.studentId === studentId && a.materialId === materialId),
+        ),
+      });
+    },
+    [data, persist],
+  );
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       data,
@@ -330,6 +376,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       addOrderMemo,
       updateOrderMemo,
       deleteOrderMemo,
+      getAssignedMaterialIds,
+      assignWorkbook,
+      unassignWorkbook,
     }),
     [
       data,
@@ -349,6 +398,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       addOrderMemo,
       updateOrderMemo,
       deleteOrderMemo,
+      getAssignedMaterialIds,
+      assignWorkbook,
+      unassignWorkbook,
     ],
   );
 

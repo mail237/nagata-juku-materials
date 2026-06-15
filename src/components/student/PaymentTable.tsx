@@ -29,7 +29,12 @@ export function PaymentTable({
         <h2 className="text-sm font-semibold text-slate-900">支払い状況</h2>
       </div>
       <div className="divide-y divide-slate-100">
-        {materials.map((material) => {
+        {materials.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-slate-500">
+            上でワークを選ぶと、ここに支払い状況が表示されます
+          </p>
+        ) : (
+          materials.map((material) => {
           const payment = getPayment(material.id);
 
           return (
@@ -67,7 +72,8 @@ export function PaymentTable({
               </div>
             </div>
           );
-        })}
+          })
+        )}
       </div>
     </section>
   );

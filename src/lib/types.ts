@@ -24,6 +24,12 @@ export type Payment = {
   received: boolean;
 };
 
+/** 生徒に紐づくワーク（支払い管理対象） */
+export type WorkbookAssignment = {
+  studentId: string;
+  materialId: string;
+};
+
 /** 発注用メモ（生徒に紐づかない） */
 export type OrderMemo = {
   id: string;
@@ -38,4 +44,5 @@ export type AppData = {
   distributions: Distribution[];
   payments: Payment[];
   orderMemos: OrderMemo[];
+  workbookAssignments: WorkbookAssignment[];
 };

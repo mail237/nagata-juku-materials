@@ -3,9 +3,11 @@
 import { use, useMemo } from "react";
 import { DistributionTable } from "@/components/student/DistributionTable";
 import { PaymentTable } from "@/components/student/PaymentTable";
+import { WorkbookSelector } from "@/components/student/WorkbookSelector";
 import { Header } from "@/components/layout/Header";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useAppData } from "@/hooks/useAppData";
+import { sortMaterialsByLevel } from "@/lib/materials";
 import { decodeRouteParam } from "@/lib/routes";
 
 type PageProps = {
@@ -23,13 +25,22 @@ export default function StudentPage({ params }: PageProps) {
     clearDistribution,
     getPayment,
     updatePayment,
+    getAssignedMaterialIds,
+    assignWorkbook,
+    unassignWorkbook,
   } = useAppData();
 
   const student = data?.students.find((s) => s.id === studentId);
   const materials = useMemo(() => {
     if (!data) return [];
-    return [...data.materials].sort((a, b) => a.name.localeCompare(b.name, "ja"));
+    return sortMaterialsByLevel(data.materials);
   }, [data]);
+
+  const assignedMaterialIds = getAssignedMaterialIds(studentId);
+  const paymentMaterials = useMemo(() => {
+    const idSet = new Set(assignedMaterialIds);
+    return materials.filter((m) => idSet.has(m.id));
+  }, [materials, assignedMaterialIds]);
 
   if (!ready) {
     return (
@@ -69,8 +80,15 @@ export default function StudentPage({ params }: PageProps) {
             onClearDistribution={(materialId) => clearDistribution(studentId, materialId)}
           />
 
-          <PaymentTable
+          <WorkbookSelector
             materials={materials}
+            assignedMaterialIds={assignedMaterialIds}
+            onAssign={(materialId) => assignWorkbook(studentId, materialId)}
+            onUnassign={(materialId) => unassignWorkbook(studentId, materialId)}
+          />
+
+          <PaymentTable
+            materials={paymentMaterials}
             getPayment={(materialId) => {
               const payment = getPayment(studentId, materialId);
               const material = materials.find((m) => m.id === materialId);
