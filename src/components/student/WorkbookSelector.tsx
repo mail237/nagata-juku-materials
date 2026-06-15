@@ -19,6 +19,7 @@ type WorkbookSelectorProps = {
   assignedMaterialIds: string[];
   onAssign: (materialId: string) => void;
   onUnassign: (materialId: string) => void;
+  onDistribute: (materialId: string) => void;
 };
 
 export function WorkbookSelector({
@@ -28,6 +29,7 @@ export function WorkbookSelector({
   assignedMaterialIds,
   onAssign,
   onUnassign,
+  onDistribute,
 }: WorkbookSelectorProps) {
   const subjects = useMemo(
     () => getSubjectsForGrade(series, grade),
@@ -69,12 +71,33 @@ export function WorkbookSelector({
 
   const isForesta = series === "フォレスタ";
 
+  const resolveSelectedId = (): string => {
+    if (isForesta) return availableMaterials[0]?.id ?? "";
+    return currentSelection;
+  };
+
+  const handleDistribute = () => {
+    const materialId = resolveSelectedId();
+    if (!materialId) return;
+    onDistribute(materialId);
+    if (!assignedMaterialIds.includes(materialId)) {
+      onAssign(materialId);
+    }
+  };
+
+  const handleAssign = () => {
+    const materialId = resolveSelectedId();
+    if (!materialId) return;
+    onAssign(materialId);
+    setSelectedMaterialId("");
+  };
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-4 py-3">
         <h2 className="text-sm font-semibold text-slate-900">ワークを選択</h2>
         <p className="mt-1 text-xs text-slate-500">
-          {series} のワークを選ぶと、支払い状況が下に表示されます
+          ワークを選んで「配布する」または「支払いに追加」
         </p>
       </div>
 
@@ -121,21 +144,23 @@ export function WorkbookSelector({
           </label>
         )}
 
-        <Button
-          className="w-full"
-          disabled={isForesta ? availableMaterials.length === 0 : !currentSelection}
-          onClick={() => {
-            const materialId = isForesta
-              ? availableMaterials[0]?.id
-              : currentSelection;
-            if (materialId) {
-              onAssign(materialId);
-              setSelectedMaterialId("");
-            }
-          }}
-        >
-          ワークを追加
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            className="w-full"
+            disabled={!resolveSelectedId()}
+            onClick={handleDistribute}
+          >
+            配布する
+          </Button>
+          <Button
+            variant="secondary"
+            className="w-full"
+            disabled={!resolveSelectedId()}
+            onClick={handleAssign}
+          >
+            支払いに追加
+          </Button>
+        </div>
 
         {assignedMaterials.length > 0 ? (
           <div className="space-y-2">

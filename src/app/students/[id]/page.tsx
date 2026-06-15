@@ -49,6 +49,12 @@ export default function StudentPage({ params }: PageProps) {
   }, [materials, series, student]);
 
   const assignedMaterialIds = getAssignedMaterialIds(studentId);
+
+  const distributionMaterials = useMemo(() => {
+    const idSet = new Set(assignedMaterialIds);
+    return seriesMaterials.filter((m) => idSet.has(m.id));
+  }, [seriesMaterials, assignedMaterialIds]);
+
   const paymentMaterials = useMemo(() => {
     const idSet = new Set(assignedMaterialIds);
     return seriesMaterials.filter((m) => idSet.has(m.id));
@@ -95,6 +101,16 @@ export default function StudentPage({ params }: PageProps) {
             assignedMaterialIds={assignedMaterialIds}
             onAssign={(materialId) => assignWorkbook(studentId, materialId)}
             onUnassign={(materialId) => unassignWorkbook(studentId, materialId)}
+            onDistribute={(materialId) => markDistributed(studentId, materialId)}
+          />
+
+          <DistributionTable
+            materials={distributionMaterials}
+            getDistributedAt={(materialId) =>
+              getDistribution(studentId, materialId)?.distributedAt ?? null
+            }
+            onMarkDistributed={(materialId) => markDistributed(studentId, materialId)}
+            onClearDistribution={(materialId) => clearDistribution(studentId, materialId)}
           />
 
           <PaymentTable
@@ -111,15 +127,6 @@ export default function StudentPage({ params }: PageProps) {
             onUpdatePayment={(materialId, updates) =>
               updatePayment(studentId, materialId, updates)
             }
-          />
-
-          <DistributionTable
-            materials={seriesMaterials}
-            getDistributedAt={(materialId) =>
-              getDistribution(studentId, materialId)?.distributedAt ?? null
-            }
-            onMarkDistributed={(materialId) => markDistributed(studentId, materialId)}
-            onClearDistribution={(materialId) => clearDistribution(studentId, materialId)}
           />
         </div>
       </PageContainer>
