@@ -8,6 +8,9 @@ export const GRADES = [
   "中1",
   "中2",
   "中3",
+  "高1",
+  "高2",
+  "高3",
 ] as const;
 
 export type Grade = (typeof GRADES)[number];

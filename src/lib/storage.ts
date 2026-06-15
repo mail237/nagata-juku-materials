@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from "./constants";
 import { createInitialMaterials } from "./initial-data";
+import { createInitialStudents } from "./initial-students";
 import type {
   AppData,
   Distribution,
@@ -29,25 +30,31 @@ function writeJson<T>(key: string, value: T): void {
 }
 
 export function loadAppData(): AppData {
-  const materials = readJson<Material[]>(STORAGE_KEYS.materials, []);
+  let materials = readJson<Material[]>(STORAGE_KEYS.materials, []);
+  let students = readJson<Student[]>(STORAGE_KEYS.students, []);
 
   if (materials.length === 0) {
-    const initialMaterials = createInitialMaterials();
-    writeJson(STORAGE_KEYS.materials, initialMaterials);
-    return {
-      students: readJson<Student[]>(STORAGE_KEYS.students, []),
-      materials: initialMaterials,
-      distributions: readJson<Distribution[]>(STORAGE_KEYS.distributions, []),
-      payments: readJson<Payment[]>(STORAGE_KEYS.payments, []),
-    };
+    materials = createInitialMaterials();
+    writeJson(STORAGE_KEYS.materials, materials);
+  }
+
+  if (students.length === 0) {
+    students = createInitialStudents();
+    writeJson(STORAGE_KEYS.students, students);
   }
 
   return {
-    students: readJson<Student[]>(STORAGE_KEYS.students, []),
+    students,
     materials,
     distributions: readJson<Distribution[]>(STORAGE_KEYS.distributions, []),
     payments: readJson<Payment[]>(STORAGE_KEYS.payments, []),
   };
+}
+
+export function importRosterStudents(): Student[] {
+  const students = createInitialStudents();
+  writeJson(STORAGE_KEYS.students, students);
+  return students;
 }
 
 export function saveAppData(data: AppData): void {

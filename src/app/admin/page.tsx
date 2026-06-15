@@ -2,6 +2,7 @@
 
 import { DataExport } from "@/components/admin/DataExport";
 import { MaterialManager } from "@/components/admin/MaterialManager";
+import { RosterImport } from "@/components/admin/RosterImport";
 import { StudentManager } from "@/components/admin/StudentManager";
 import { Header } from "@/components/layout/Header";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -18,6 +19,7 @@ export default function AdminPage() {
     updateMaterial,
     deleteMaterial,
     exportJson,
+    importRoster,
   } = useAppData();
 
   return (
@@ -28,6 +30,7 @@ export default function AdminPage() {
           <p className="py-8 text-center text-sm text-slate-500">読み込み中…</p>
         ) : (
           <div className="space-y-5">
+            <RosterImport studentCount={data.students.length} onImport={importRoster} />
             <StudentManager
               students={data.students}
               onAdd={addStudent}

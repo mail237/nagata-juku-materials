@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { loadAppData, saveAppData, createId, todayIsoDate } from "@/lib/storage";
+import { loadAppData, saveAppData, createId, todayIsoDate, importRosterStudents } from "@/lib/storage";
 import type {
   AppData,
   Distribution,
@@ -217,6 +217,18 @@ export function useAppData() {
     URL.revokeObjectURL(url);
   }, [data]);
 
+  const importRoster = useCallback(() => {
+    if (!data) return;
+    const students = importRosterStudents();
+    const studentIds = new Set(students.map((s) => s.id));
+    persist({
+      ...data,
+      students,
+      distributions: data.distributions.filter((d) => studentIds.has(d.studentId)),
+      payments: data.payments.filter((p) => studentIds.has(p.studentId)),
+    });
+  }, [data, persist]);
+
   return {
     data,
     ready: data !== null,
@@ -232,5 +244,6 @@ export function useAppData() {
     getPayment,
     updatePayment,
     exportJson,
+    importRoster,
   };
 }
