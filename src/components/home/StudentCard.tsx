@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { studentPath } from "@/lib/routes";
 import type { Student } from "@/lib/types";
 
 type StudentCardProps = {
@@ -8,7 +9,7 @@ type StudentCardProps = {
 export function StudentCard({ student }: StudentCardProps) {
   return (
     <Link
-      href={`/students/${student.id}`}
+      href={studentPath(student.id)}
       className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/40 active:bg-blue-50"
     >
       <div className="flex items-center justify-between gap-3">

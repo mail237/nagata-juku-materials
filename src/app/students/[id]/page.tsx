@@ -6,13 +6,15 @@ import { PaymentTable } from "@/components/student/PaymentTable";
 import { Header } from "@/components/layout/Header";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useAppData } from "@/hooks/useAppData";
+import { decodeRouteParam } from "@/lib/routes";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
 export default function StudentPage({ params }: PageProps) {
-  const { id } = use(params);
+  const { id: rawId } = use(params);
+  const studentId = decodeRouteParam(rawId);
   const {
     data,
     ready,
@@ -23,7 +25,7 @@ export default function StudentPage({ params }: PageProps) {
     updatePayment,
   } = useAppData();
 
-  const student = data?.students.find((s) => s.id === id);
+  const student = data?.students.find((s) => s.id === studentId);
   const materials = useMemo(() => {
     if (!data) return [];
     return [...data.materials].sort((a, b) => a.name.localeCompare(b.name, "ja"));
@@ -61,16 +63,16 @@ export default function StudentPage({ params }: PageProps) {
           <DistributionTable
             materials={materials}
             getDistributedAt={(materialId) =>
-              getDistribution(id, materialId)?.distributedAt ?? null
+              getDistribution(studentId, materialId)?.distributedAt ?? null
             }
-            onMarkDistributed={(materialId) => markDistributed(id, materialId)}
-            onClearDistribution={(materialId) => clearDistribution(id, materialId)}
+            onMarkDistributed={(materialId) => markDistributed(studentId, materialId)}
+            onClearDistribution={(materialId) => clearDistribution(studentId, materialId)}
           />
 
           <PaymentTable
             materials={materials}
             getPayment={(materialId) => {
-              const payment = getPayment(id, materialId);
+              const payment = getPayment(studentId, materialId);
               const material = materials.find((m) => m.id === materialId);
               return {
                 amount: payment?.amount ?? material?.price ?? 0,
@@ -79,7 +81,7 @@ export default function StudentPage({ params }: PageProps) {
               };
             }}
             onUpdatePayment={(materialId, updates) =>
-              updatePayment(id, materialId, updates)
+              updatePayment(studentId, materialId, updates)
             }
           />
         </div>
