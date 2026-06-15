@@ -15,6 +15,7 @@ import {
   saveAppData,
   todayIsoDate,
 } from "@/lib/storage";
+import type { WorkbookSeries } from "@/lib/materials";
 import type {
   AppData,
   Distribution,
@@ -50,6 +51,8 @@ type AppDataContextValue = {
   getAssignedMaterialIds: (studentId: string) => string[];
   assignWorkbook: (studentId: string, materialId: string) => void;
   unassignWorkbook: (studentId: string, materialId: string) => void;
+  getStudentSeries: (studentId: string) => WorkbookSeries;
+  setStudentSeries: (studentId: string, series: WorkbookSeries) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -105,6 +108,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         distributions: data.distributions.filter((d) => d.studentId !== id),
         payments: data.payments.filter((p) => p.studentId !== id),
         workbookAssignments: data.workbookAssignments.filter((a) => a.studentId !== id),
+        studentSeries: data.studentSeries.filter((s) => s.studentId !== id),
       });
     },
     [data, persist],
@@ -356,6 +360,33 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     [data, persist],
   );
 
+  const getStudentSeries = useCallback(
+    (studentId: string): WorkbookSeries => {
+      if (!data) return "あいきゃん";
+      return (
+        data.studentSeries.find((s) => s.studentId === studentId)?.series ?? "あいきゃん"
+      );
+    },
+    [data],
+  );
+
+  const setStudentSeries = useCallback(
+    (studentId: string, series: WorkbookSeries) => {
+      if (!data) return;
+      const existing = data.studentSeries.find((s) => s.studentId === studentId);
+      let studentSeries = data.studentSeries;
+      if (existing) {
+        studentSeries = data.studentSeries.map((s) =>
+          s.studentId === studentId ? { ...s, series } : s,
+        );
+      } else {
+        studentSeries = [...data.studentSeries, { studentId, series }];
+      }
+      persist({ ...data, studentSeries });
+    },
+    [data, persist],
+  );
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       data,
@@ -379,6 +410,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       getAssignedMaterialIds,
       assignWorkbook,
       unassignWorkbook,
+      getStudentSeries,
+      setStudentSeries,
     }),
     [
       data,
@@ -401,6 +434,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       getAssignedMaterialIds,
       assignWorkbook,
       unassignWorkbook,
+      getStudentSeries,
+      setStudentSeries,
     ],
   );
 

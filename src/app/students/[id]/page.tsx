@@ -3,11 +3,12 @@
 import { use, useMemo } from "react";
 import { DistributionTable } from "@/components/student/DistributionTable";
 import { PaymentTable } from "@/components/student/PaymentTable";
+import { SeriesSelector } from "@/components/student/SeriesSelector";
 import { WorkbookSelector } from "@/components/student/WorkbookSelector";
 import { Header } from "@/components/layout/Header";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useAppData } from "@/hooks/useAppData";
-import { sortMaterialsByLevel } from "@/lib/materials";
+import { filterMaterialsForStudent, sortMaterialsByLevel } from "@/lib/materials";
 import { decodeRouteParam } from "@/lib/routes";
 
 type PageProps = {
@@ -28,19 +29,30 @@ export default function StudentPage({ params }: PageProps) {
     getAssignedMaterialIds,
     assignWorkbook,
     unassignWorkbook,
+    getStudentSeries,
+    setStudentSeries,
   } = useAppData();
 
   const student = data?.students.find((s) => s.id === studentId);
+  const series = getStudentSeries(studentId);
+
   const materials = useMemo(() => {
     if (!data) return [];
     return sortMaterialsByLevel(data.materials);
   }, [data]);
 
+  const seriesMaterials = useMemo(() => {
+    if (!student) return [];
+    return sortMaterialsByLevel(
+      filterMaterialsForStudent(materials, series, student.grade),
+    );
+  }, [materials, series, student]);
+
   const assignedMaterialIds = getAssignedMaterialIds(studentId);
   const paymentMaterials = useMemo(() => {
     const idSet = new Set(assignedMaterialIds);
-    return materials.filter((m) => idSet.has(m.id));
-  }, [materials, assignedMaterialIds]);
+    return seriesMaterials.filter((m) => idSet.has(m.id));
+  }, [seriesMaterials, assignedMaterialIds]);
 
   if (!ready) {
     return (
@@ -71,8 +83,13 @@ export default function StudentPage({ params }: PageProps) {
       <Header title={`${student.name}（${student.grade}）`} backHref="/" />
       <PageContainer>
         <div className="space-y-5">
+          <SeriesSelector
+            selected={series}
+            onChange={(next) => setStudentSeries(studentId, next)}
+          />
+
           <DistributionTable
-            materials={materials}
+            materials={seriesMaterials}
             getDistributedAt={(materialId) =>
               getDistribution(studentId, materialId)?.distributedAt ?? null
             }
@@ -82,6 +99,8 @@ export default function StudentPage({ params }: PageProps) {
 
           <WorkbookSelector
             materials={materials}
+            grade={student.grade}
+            series={series}
             assignedMaterialIds={assignedMaterialIds}
             onAssign={(materialId) => assignWorkbook(studentId, materialId)}
             onUnassign={(materialId) => unassignWorkbook(studentId, materialId)}

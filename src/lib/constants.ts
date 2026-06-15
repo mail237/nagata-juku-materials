@@ -22,6 +22,7 @@ export const STORAGE_KEYS = {
   payments: "nagata_payments",
   orderMemos: "nagata_order_memos",
   workbookAssignments: "nagata_workbook_assignments",
+  studentSeries: "nagata_student_series",
 } as const;
 
 export const BRAND_COLOR = "#2563EB";

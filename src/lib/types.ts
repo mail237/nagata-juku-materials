@@ -30,6 +30,12 @@ export type WorkbookAssignment = {
   materialId: string;
 };
 
+/** 生徒ごとの教材シリーズ選択 */
+export type StudentSeries = {
+  studentId: string;
+  series: "あいきゃん" | "フォレスタ";
+};
+
 /** 発注用メモ（生徒に紐づかない） */
 export type OrderMemo = {
   id: string;
@@ -45,4 +51,5 @@ export type AppData = {
   payments: Payment[];
   orderMemos: OrderMemo[];
   workbookAssignments: WorkbookAssignment[];
+  studentSeries: StudentSeries[];
 };
