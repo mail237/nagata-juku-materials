@@ -6,12 +6,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
+  fetchCloudData,
+  mergeStored,
+  scheduleCloudSync,
+  type SyncStatus,
+} from "@/lib/cloud-sync";
+import {
   createId,
   importRosterStudents,
-  loadAppData,
+  loadStoredAppData,
   saveAppData,
   todayIsoDate,
 } from "@/lib/storage";
@@ -28,6 +35,7 @@ import type {
 type AppDataContextValue = {
   data: AppData | null;
   ready: boolean;
+  syncStatus: SyncStatus;
   addStudent: (name: string, grade: string) => void;
   updateStudent: (id: string, name: string, grade: string) => void;
   deleteStudent: (id: string) => void;
@@ -67,14 +75,72 @@ function paymentKey(studentId: string, materialId: string): string {
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<AppData | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const dataRef = useRef<AppData | null>(null);
 
   useEffect(() => {
-    setData(loadAppData());
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      setSyncStatus("syncing");
+      try {
+        const local = await loadStoredAppData();
+        const remote = await fetchCloudData();
+        const merged = remote ? mergeStored(local, remote) : local;
+
+        if (!cancelled) {
+          await saveAppData(merged.data);
+          setData(merged.data);
+        }
+
+        if (!cancelled) {
+          const usedRemote =
+            remote !== null &&
+            new Date(merged.updatedAt).getTime() === new Date(remote.updatedAt).getTime() &&
+            new Date(remote.updatedAt).getTime() > new Date(local.updatedAt).getTime();
+
+          if (usedRemote) {
+            setSyncStatus("synced");
+          } else {
+            scheduleCloudSync(merged, setSyncStatus);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          const fallback = await loadStoredAppData();
+          setData(fallback.data);
+          setSyncStatus("offline");
+        }
+      }
+    }
+
+    void init();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleOnline() {
+      const current = dataRef.current;
+      if (!current) return;
+      void saveAppData(current).then((payload) => scheduleCloudSync(payload, setSyncStatus));
+    }
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
   }, []);
 
   const persist = useCallback((next: AppData) => {
     setData(next);
-    saveAppData(next);
+    void (async () => {
+      const payload = await saveAppData(next);
+      scheduleCloudSync(payload, setSyncStatus);
+    })();
   }, []);
 
   const addStudent = useCallback(
@@ -391,6 +457,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     () => ({
       data,
       ready: data !== null,
+      syncStatus,
       addStudent,
       updateStudent,
       deleteStudent,
@@ -415,6 +482,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       data,
+      syncStatus,
       addStudent,
       updateStudent,
       deleteStudent,

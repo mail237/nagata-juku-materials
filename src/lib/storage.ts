@@ -6,6 +6,8 @@ import {
   migrateMaterials,
 } from "./initial-data";
 import { createInitialStudents } from "./initial-students";
+import { readIndexedDb, writeIndexedDb } from "./indexed-db";
+import { LOCAL_BACKUP_KEY, type StoredAppData } from "./storage-types";
 import type {
   AppData,
   Distribution,
@@ -44,75 +46,143 @@ function migrateMaterialReferences<T extends { materialId: string }>(items: T[])
   }));
 }
 
+function buildAppDataFromParts(input: {
+  rawMaterials: Material[];
+  students: Student[];
+  rawDistributions: Distribution[];
+  rawPayments: Payment[];
+  rawWorkbooks: WorkbookAssignment[];
+  orderMemos: OrderMemo[];
+  studentSeries: StudentSeries[];
+}): { data: AppData; needsMigration: boolean } {
+  const materials = ensureMaterials(input.rawMaterials);
+  let students = input.students;
+
+  if (students.length === 0) {
+    students = createInitialStudents();
+  }
+
+  const distributions = migrateMaterialReferences(input.rawDistributions);
+  const payments = migrateMaterialReferences(input.rawPayments);
+  const workbookAssignments = migrateMaterialReferences(input.rawWorkbooks);
+
+  const needsMigration =
+    input.rawMaterials.some((m) => m.id !== migrateMaterialId(m.id)) ||
+    (input.rawMaterials.length > 0 &&
+      !input.rawMaterials.some((m) => m.name.startsWith("フォレスタ"))) ||
+    input.rawDistributions.some((d) => d.materialId !== migrateMaterialId(d.materialId)) ||
+    input.rawPayments.some((p) => p.materialId !== migrateMaterialId(p.materialId)) ||
+    input.rawWorkbooks.some((w) => w.materialId !== migrateMaterialId(w.materialId));
+
+  return {
+    data: {
+      students,
+      materials,
+      distributions,
+      payments,
+      orderMemos: input.orderMemos,
+      workbookAssignments,
+      studentSeries: input.studentSeries,
+    },
+    needsMigration,
+  };
+}
+
 function ensureMaterials(raw: Material[]): Material[] {
   let materials = migrateMaterials(raw);
 
   if (materials.length === 0) {
-    materials = createInitialMaterials();
-    writeJson(STORAGE_KEYS.materials, materials);
-    return materials;
+    return createInitialMaterials();
   }
 
   if (!materials.some((m) => m.name.startsWith("フォレスタ"))) {
     materials = [...materials, ...createForestaMaterials()];
-    writeJson(STORAGE_KEYS.materials, materials);
   }
 
   return materials;
 }
 
-export function loadAppData(): AppData {
+function loadFromLegacyLocalStorage(): StoredAppData {
   const rawMaterials = readJson<Material[]>(STORAGE_KEYS.materials, []);
-  const materials = ensureMaterials(rawMaterials);
-  let students = readJson<Student[]>(STORAGE_KEYS.students, []);
-
-  if (students.length === 0) {
-    students = createInitialStudents();
-    writeJson(STORAGE_KEYS.students, students);
-  }
-
-  const rawDistributions = readJson<Distribution[]>(STORAGE_KEYS.distributions, []);
-  const rawPayments = readJson<Payment[]>(STORAGE_KEYS.payments, []);
-  const rawWorkbooks = readJson<WorkbookAssignment[]>(
-    STORAGE_KEYS.workbookAssignments,
-    [],
-  );
-
-  const distributions = migrateMaterialReferences(rawDistributions);
-  const payments = migrateMaterialReferences(rawPayments);
-  const workbookAssignments = migrateMaterialReferences(rawWorkbooks);
-
-  const needsMigration =
-    rawMaterials.some((m) => m.id !== migrateMaterialId(m.id)) ||
-    !rawMaterials.some((m) => m.name.startsWith("フォレスタ")) && rawMaterials.length > 0 ||
-    rawDistributions.some((d) => d.materialId !== migrateMaterialId(d.materialId)) ||
-    rawPayments.some((p) => p.materialId !== migrateMaterialId(p.materialId)) ||
-    rawWorkbooks.some((w) => w.materialId !== migrateMaterialId(w.materialId));
-
-  const result: AppData = {
-    students,
-    materials,
-    distributions,
-    payments,
+  const { data, needsMigration } = buildAppDataFromParts({
+    rawMaterials,
+    students: readJson<Student[]>(STORAGE_KEYS.students, []),
+    rawDistributions: readJson<Distribution[]>(STORAGE_KEYS.distributions, []),
+    rawPayments: readJson<Payment[]>(STORAGE_KEYS.payments, []),
+    rawWorkbooks: readJson<WorkbookAssignment[]>(STORAGE_KEYS.workbookAssignments, []),
     orderMemos: readJson<OrderMemo[]>(STORAGE_KEYS.orderMemos, []),
-    workbookAssignments,
     studentSeries: readJson<StudentSeries[]>(STORAGE_KEYS.studentSeries, []),
+  });
+
+  const payload: StoredAppData = {
+    data,
+    updatedAt: needsMigration ? new Date().toISOString() : readBackupTimestamp(),
   };
 
-  if (needsMigration) {
-    saveAppData(result);
+  return payload;
+}
+
+function loadFromBackupSnapshot(): StoredAppData | null {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_BACKUP_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredAppData;
+  } catch {
+    return null;
+  }
+}
+
+function readBackupTimestamp(): string {
+  const backup = loadFromBackupSnapshot();
+  return backup?.updatedAt ?? new Date(0).toISOString();
+}
+
+export function createStoredPayload(data: AppData): StoredAppData {
+  return {
+    data,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export async function loadStoredAppData(): Promise<StoredAppData> {
+  const indexed = await readIndexedDb();
+  const backup = typeof window !== "undefined" ? loadFromBackupSnapshot() : null;
+  const legacy = typeof window !== "undefined" ? loadFromLegacyLocalStorage() : null;
+
+  const candidates = [indexed, backup, legacy].filter(Boolean) as StoredAppData[];
+  if (candidates.length === 0) {
+    const initial = createStoredPayload(
+      buildAppDataFromParts({
+        rawMaterials: [],
+        students: [],
+        rawDistributions: [],
+        rawPayments: [],
+        rawWorkbooks: [],
+        orderMemos: [],
+        studentSeries: [],
+      }).data,
+    );
+    await saveStoredAppData(initial);
+    return initial;
   }
 
-  return result;
+  const newest = candidates.reduce((best, current) =>
+    new Date(current.updatedAt) > new Date(best.updatedAt) ? current : best,
+  );
+
+  await saveStoredAppData(newest);
+  return newest;
 }
 
-export function importRosterStudents(): Student[] {
-  const students = createInitialStudents();
-  writeJson(STORAGE_KEYS.students, students);
-  return students;
+export async function saveStoredAppData(payload: StoredAppData): Promise<void> {
+  await writeIndexedDb(payload);
+  writeLegacyLocalStorage(payload.data);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify(payload));
+  }
 }
 
-export function saveAppData(data: AppData): void {
+function writeLegacyLocalStorage(data: AppData): void {
   writeJson(STORAGE_KEYS.students, data.students);
   writeJson(STORAGE_KEYS.materials, data.materials);
   writeJson(STORAGE_KEYS.distributions, data.distributions);
@@ -120,6 +190,33 @@ export function saveAppData(data: AppData): void {
   writeJson(STORAGE_KEYS.orderMemos, data.orderMemos);
   writeJson(STORAGE_KEYS.workbookAssignments, data.workbookAssignments);
   writeJson(STORAGE_KEYS.studentSeries, data.studentSeries);
+}
+
+/** @deprecated use loadStoredAppData */
+export function loadAppData(): AppData {
+  if (typeof window === "undefined") {
+    return buildAppDataFromParts({
+      rawMaterials: [],
+      students: [],
+      rawDistributions: [],
+      rawPayments: [],
+      rawWorkbooks: [],
+      orderMemos: [],
+      studentSeries: [],
+    }).data;
+  }
+  return loadFromLegacyLocalStorage().data;
+}
+
+export async function saveAppData(data: AppData): Promise<StoredAppData> {
+  const payload = createStoredPayload(data);
+  await saveStoredAppData(payload);
+  return payload;
+}
+
+export function importRosterStudents(): Student[] {
+  const students = createInitialStudents();
+  return students;
 }
 
 export function formatDate(isoDate: string | null): string {

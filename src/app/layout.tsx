@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppDataProvider } from "@/components/providers/AppDataProvider";
+import { AppShell } from "@/components/layout/AppShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,7 +24,9 @@ export default function RootLayout({
   return (
     <html lang="ja" className="h-full">
       <body className="flex min-h-full flex-col bg-slate-50 text-slate-900">
-        <AppDataProvider>{children}</AppDataProvider>
+        <AppDataProvider>
+          <AppShell>{children}</AppShell>
+        </AppDataProvider>
       </body>
     </html>
   );
